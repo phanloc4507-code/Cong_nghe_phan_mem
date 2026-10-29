@@ -1,6 +1,6 @@
-# include <bits/sdtc++.h>
-using name spacestd;
-int main(){
-  
-  return 0;
+#include <bits/stdc++.h>
+using namespace std;
+int main() {
+    cout << "Hello";
+    return 0;
 }
