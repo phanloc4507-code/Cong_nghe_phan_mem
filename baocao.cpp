@@ -5,6 +5,7 @@ void loaixe(string n){
 };
 int main() {
     cout << "Hello";
+    cout << "xin chao";
 
     return 0;
 }
