@@ -2,6 +2,7 @@
 #define ORDER_H
 
 #include <string>
+#include <vector>
 using namespace std;
 
 struct Order {
@@ -13,7 +14,8 @@ struct Order {
     string status;    // Pending, Confirmed, Delivering, Completed, Cancelled
 };
 
-void loadOrders();                 // doc file khi mo chuong trinh
+void loadOrders();
+const vector<Order>& getAllOrders();                 // doc file khi mo chuong trinh
 int addOrder(string username, string carId, double total, string payment); // Nguoi 4 goi
 void memberOrderMenu(string username);  // Nguoi 1 goi cho Member
 void adminOrderMenu();                  // Nguoi 1 goi cho Admin
