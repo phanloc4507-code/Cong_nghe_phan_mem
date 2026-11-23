@@ -1,0 +1,7 @@
+C001|Toyota Vios|Sedan tiet kiem nhien lieu|5|So tu dong|Xang|700000|10|Ready|12|40|1
+C002|Honda City|Sedan rong rai|5|So tu dong|Xang|750000|0|Ready|8|25|1
+C003|Toyota Innova|Xe gia dinh 7 cho|7|So san|Xang|1000000|5|Rented|20|60|2
+C004|Hyundai Santa Fe|SUV 7 cho|7|So tu dong|Dau|1500000|15|Ready|5|33|3
+C005|Ford Ranger|Ban tai manh me|5|So san|Dau|1200000|0|Maintenance|3|10|4
+C006|Mercedes E300|Xe sang|5|So tu dong|Xang|3500000|0|Ready|2|50|5
+C007|VinFast VF8|Xe dien|5|So tu dong|Dien|1800000|20|Ready|6|44|6
