@@ -1,359 +1,240 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <sstream>
+#include "User.h"
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <sstream>
+#include <vector>
 
-using namespace std;
+namespace UserModule {
+namespace {
+std::vector<User> userList;
+int currentUserId = -1;
+std::string userFile = "users.txt";
 
-// Cau truc du lieu nguoi dung theo Class Diagram & Data Model
-struct User {
-    int userID;
-    string email;
-    string password;
-    string fullName;
-    string dateOfBirth;
-    string gender;
-    string address;
-    string phoneNumber;
-    string licenseNumber;
-    string role; // "Customer" hoac "Admin"
-};
-
-vector<User> userList;
-User* currentUser = nullptr; // Luu tai khoan dang dang nhap
-
-// --- CAC HAM HO TRO & LUU FILE ---
-
-// Ma hoa mat khau don gian (theo yeu cau bao mat)
-string hashPassword(const string& pass) {
-    hash<string> hasher;
-    return to_string(hasher(pass));
+std::string hashPassword(const std::string& pass) {
+    // Giu dinh dang tu module User ban dau. std::hash chi phu hop bai tap,
+    // khong nen dung lam co che luu mat khau cho he thong thuc te.
+    return std::to_string(std::hash<std::string>{}(pass));
 }
 
-// Tao mat khau ngau nhien 8 ky tu cho chuc nang Reset Password
-string generateRandomPassword(int length = 8) {
-    const string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    string newPass = "";
-    for (int i = 0; i < length; ++i) {
-        newPass += chars[rand() % chars.length()];
-    }
-    return newPass;
+std::string generateRandomPassword(int length = 8) {
+    const std::string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    std::string result;
+    for (int i = 0; i < length; ++i)
+        result += chars[static_cast<std::size_t>(std::rand()) % chars.size()];
+    return result;
 }
 
-// Luu danh sach tai khoan ra file users.txt
+User* findCurrent() {
+    for (auto& user : userList)
+        if (user.userID == currentUserId) return &user;
+    return nullptr;
+}
+
 void saveUsersToFile() {
-    ofstream file("users.txt");
-    if (!file.is_open()) return;
-    for (const auto& u : userList) {
-        file << u.userID << "|" << u.email << "|" << u.password << "|"
-             << u.fullName << "|" << u.dateOfBirth << "|" << u.gender << "|"
-             << u.address << "|" << u.phoneNumber << "|" << u.licenseNumber << "|"
-             << u.role << "\n";
+    std::ofstream file(userFile);
+    if (!file) {
+        std::cout << "[Loi] Khong the ghi file tai khoan: " << userFile << '\n';
+        return;
     }
-    file.close();
+    for (const auto& u : userList) {
+        file << u.userID << '|' << u.email << '|' << u.password << '|'
+             << u.fullName << '|' << u.dateOfBirth << '|' << u.gender << '|'
+             << u.address << '|' << u.phoneNumber << '|' << u.licenseNumber << '|'
+             << u.role << '\n';
+    }
+}
 }
 
-// Doc danh sach tai khoan tu file users.txt
-void loadUsersFromFile() {
+void loadUsersFromFile(const std::string& path) {
+    userFile = path;
     userList.clear();
-    ifstream file("users.txt");
-    if (!file.is_open()) {
-        // Tao san 1 tai khoan Admin mac dinh neu chua co file du lieu
-        User admin = {1, "admin@gmail.com", hashPassword("admin123"), "Quan Tri Vien", "01/01/1990", "Nam", "Ha Noi", "0900000000", "ADMIN001", "Admin"};
+    currentUserId = -1;
+    std::ifstream file(userFile);
+    if (!file) {
+        User admin{1, "admin@gmail.com", hashPassword("admin123"), "Quan Tri Vien",
+                   "01/01/1990", "Nam", "Ha Noi", "0900000000", "ADMIN001", "Admin"};
         userList.push_back(admin);
         saveUsersToFile();
+        std::cout << "Da tao tai khoan Admin mac dinh: admin@gmail.com / admin123\n";
         return;
     }
 
-    string line;
-    while (getline(file, line)) {
+    std::string line;
+    while (std::getline(file, line)) {
         if (line.empty()) continue;
-        stringstream ss(line);
-        string item;
-        vector<string> tokens;
-        while (getline(ss, item, '|')) {
-            tokens.push_back(item);
-        }
-        if (tokens.size() >= 10) {
+        std::stringstream ss(line);
+        std::vector<std::string> fields;
+        std::string field;
+        while (std::getline(ss, field, '|')) fields.push_back(field);
+        if (fields.size() != 10) continue;
+        try {
             User u;
-            u.userID = stoi(tokens[0]);
-            u.email = tokens[1];
-            u.password = tokens[2];
-            u.fullName = tokens[3];
-            u.dateOfBirth = tokens[4];
-            u.gender = tokens[5];
-            u.address = tokens[6];
-            u.phoneNumber = tokens[7];
-            u.licenseNumber = tokens[8];
-            u.role = tokens[9];
+            u.userID = std::stoi(fields[0]);
+            u.email = fields[1]; u.password = fields[2]; u.fullName = fields[3];
+            u.dateOfBirth = fields[4]; u.gender = fields[5]; u.address = fields[6];
+            u.phoneNumber = fields[7]; u.licenseNumber = fields[8]; u.role = fields[9];
             userList.push_back(u);
-        }
+        } catch (...) { /* bo qua dong du lieu khong hop le */ }
     }
-    file.close();
+    if (userList.empty()) {
+        User admin{1, "admin@gmail.com", hashPassword("admin123"), "Quan Tri Vien",
+                   "01/01/1990", "Nam", "Ha Noi", "0900000000", "ADMIN001", "Admin"};
+        userList.push_back(admin);
+        saveUsersToFile();
+    }
 }
 
-// --- CAC CHUC NANG CHINH CUA MODULE USER ---
-
-// 1. Dang ky tai khoan (Use-case Register account)
-void registerAccount() {
+bool registerAccount() {
     User u;
-    string confirmPass, rawPass;
-    cout << "\n=== DANG KY TAI KHOAN ===\n";
-    cout << "Nhap Email (ten dang nhap): ";
-    cin >> u.email;
-
-    // Kiem tra trung email
+    std::string password, confirm;
+    std::cout << "\n=== DANG KY TAI KHOAN ===\nEmail: ";
+    std::getline(std::cin >> std::ws, u.email);
+    if (u.email.empty() || u.email.find('@') == std::string::npos) {
+        std::cout << "Email khong hop le.\n"; return false;
+    }
     for (const auto& existing : userList) {
         if (existing.email == u.email) {
-            cout << "[Loi] Email nay da duoc dang ky! Vui long dung email khac.\n";
-            return;
+            std::cout << "Email da duoc dang ky.\n"; return false;
         }
     }
-
-    cout << "Nhap Mat khau (toi thieu 6 ky tu): ";
-    cin >> rawPass;
-    if (rawPass.length() < 6) {
-        cout << "[Loi] Mat khau phai co it nhat 6 ky tu!\n";
-        return;
-    }
-    cout << "Xac nhan lai Mat khau: ";
-    cin >> confirmPass;
-    if (rawPass != confirmPass) {
-        cout << "[Loi] Mat khau xac nhan khong khop!\n";
-        return;
-    }
-    u.password = hashPassword(rawPass);
-
-    cin.ignore();
-    cout << "Ho va ten (*): ";
-    getline(cin, u.fullName);
-    cout << "So dien thoai (*): ";
-    getline(cin, u.phoneNumber);
-
+    std::cout << "Mat khau (it nhat 6 ky tu): "; std::getline(std::cin, password);
+    if (password.size() < 6) { std::cout << "Mat khau qua ngan.\n"; return false; }
+    std::cout << "Xac nhan mat khau: "; std::getline(std::cin, confirm);
+    if (password != confirm) { std::cout << "Mat khau xac nhan khong khop.\n"; return false; }
+    std::cout << "Ho va ten: "; std::getline(std::cin, u.fullName);
+    std::cout << "So dien thoai: "; std::getline(std::cin, u.phoneNumber);
     if (u.fullName.empty() || u.phoneNumber.empty()) {
-        cout << "[Loi] Ho ten va So dien thoai khong duoc de trong!\n";
-        return;
+        std::cout << "Ho ten va so dien thoai khong duoc de trong.\n"; return false;
     }
-
-    cout << "Ngay sinh (DD/MM/YYYY): ";
-    getline(cin, u.dateOfBirth);
-    cout << "Gioi tinh (Nam/Nu): ";
-    getline(cin, u.gender);
-    cout << "Dia chi: ";
-    getline(cin, u.address);
-    cout << "So GPLX / CCCD (co the bo qua, bo sung khi dat xe): ";
-    getline(cin, u.licenseNumber);
-
-    u.userID = userList.empty() ? 1 : userList.back().userID + 1;
-    u.role = "Customer";
-
+    std::cout << "Ngay sinh (DD/MM/YYYY): "; std::getline(std::cin, u.dateOfBirth);
+    std::cout << "Gioi tinh: "; std::getline(std::cin, u.gender);
+    std::cout << "Dia chi: "; std::getline(std::cin, u.address);
+    std::cout << "So GPLX/CCCD: "; std::getline(std::cin, u.licenseNumber);
+    int maxId = 0;
+    for (const auto& item : userList) if (item.userID > maxId) maxId = item.userID;
+    u.userID = maxId + 1;
+    u.password = hashPassword(password);
+    u.role = "Customer"; // Khong cho nguoi dung tu dang ky quyen Admin.
     userList.push_back(u);
     saveUsersToFile();
-    cout << ">> Dang ky tai khoan thanh cong!\n";
+    std::cout << "Dang ky tai khoan thanh cong.\n";
+    return true;
 }
 
-// 2. Dang nhap (Use-case Login)
 bool loginUser() {
-    string email, rawPass;
-    cout << "\n=== DANG NHAP ===\n";
-    cout << "Email: ";
-    cin >> email;
-    cout << "Mat khau: ";
-    cin >> rawPass;
-
-    string hashed = hashPassword(rawPass);
-    for (auto& u : userList) {
+    std::string email, password;
+    std::cout << "\n=== DANG NHAP ===\nEmail: ";
+    std::getline(std::cin >> std::ws, email);
+    std::cout << "Mat khau: "; std::getline(std::cin, password);
+    const std::string hashed = hashPassword(password);
+    for (const auto& u : userList) {
         if (u.email == email && u.password == hashed) {
-            currentUser = &u;
-            cout << ">> Dang nhap thanh cong! Xin chao, " << u.fullName << " (" << u.role << ").\n";
+            currentUserId = u.userID;
+            std::cout << "Dang nhap thanh cong. Xin chao " << u.fullName
+                      << " (" << u.role << ").\n";
             return true;
         }
     }
-    cout << "[Loi] Sai email hoac mat khau!\n";
+    std::cout << "Sai email hoac mat khau.\n";
     return false;
 }
 
-// 3. Xem & Cap nhat thong tin ca nhan (Use-case Update profile)
-void updateProfile() {
-    if (currentUser == nullptr) {
-        cout << "[Loi] Vui long dang nhap truoc!\n";
-        return;
-    }
-
-    cout << "\n=== THONG TIN CA NHAN ===\n";
-    cout << "ID: " << currentUser->userID << " | Vai tro: " << currentUser->role << "\n";
-    cout << "Email (Khong the sua): " << currentUser->email << "\n";
-    cout << "Ho ten: " << currentUser->fullName << "\n";
-    cout << "Ngay sinh: " << currentUser->dateOfBirth << "\n";
-    cout << "Gioi tinh: " << currentUser->gender << "\n";
-    cout << "Dia chi: " << currentUser->address << "\n";
-    cout << "So dien thoai: " << currentUser->phoneNumber << "\n";
-    cout << "So GPLX/CCCD: " << currentUser->licenseNumber << "\n";
-
-    cout << "\nBan co muon cap nhat thong tin khong? (y/n): ";
-    char ans;
-    cin >> ans;
-    if (ans != 'y' && ans != 'Y') return;
-
-    cin.ignore();
-    string input;
-    cout << "Ho ten moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->fullName = input;
-
-    cout << "Ngay sinh moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->dateOfBirth = input;
-
-    cout << "Gioi tinh moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->gender = input;
-
-    cout << "Dia chi moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->address = input;
-
-    cout << "So dien thoai moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->phoneNumber = input;
-
-    cout << "So GPLX/CCCD moi (Enter de giu nguyen): ";
-    getline(cin, input);
-    if (!input.empty()) currentUser->licenseNumber = input;
-
-    cout << "Ban co muon doi mat khau khong? (y/n): ";
-    cin >> ans;
-    if (ans == 'y' || ans == 'Y') {
-        string newPass, confirmPass;
-        cout << "Nhap mat khau moi (>= 6 ky tu): ";
-        cin >> newPass;
-        if (newPass.length() < 6) {
-            cout << "[Loi] Mat khau qua ngan! Huy doi mat khau.\n";
-        } else {
-            cout << "Xac nhan mat khau moi: ";
-            cin >> confirmPass;
-            if (newPass == confirmPass) {
-                currentUser->password = hashPassword(newPass);
-                cout << ">> Doi mat khau thanh cong!\n";
-            } else {
-                cout << "[Loi] Mat khau xac nhan khong khop!\n";
-            }
-        }
-    }
-
-    saveUsersToFile();
-    cout << ">> Da luu thong tin cap nhat!\n";
+void logoutUser() {
+    currentUserId = -1;
+    std::cout << "Da dang xuat.\n";
 }
 
-// 4. Quen mat khau (Use-case Reset password)
-void resetPassword() {
-    string email;
-    cout << "\n=== KHOI PHUC MAT KHAU ===\n";
-    cout << "Nhap Email tai khoan: ";
-    cin >> email;
+const User* currentUser() { return findCurrent(); }
+bool isLoggedIn() { return findCurrent() != nullptr; }
+bool isAdmin() { const User* u = currentUser(); return u && u->role == "Admin"; }
 
+void updateProfile() {
+    User* u = findCurrent();
+    if (!u) { std::cout << "Vui long dang nhap truoc.\n"; return; }
+    std::cout << "\n=== THONG TIN CA NHAN ===\n"
+              << "Email: " << u->email << "\nHo ten: " << u->fullName
+              << "\nNgay sinh: " << u->dateOfBirth << "\nGioi tinh: " << u->gender
+              << "\nDia chi: " << u->address << "\nSDT: " << u->phoneNumber
+              << "\nGPLX/CCCD: " << u->licenseNumber << '\n';
+    std::string input;
+    std::cout << "Ho ten moi (Enter de giu nguyen): "; std::getline(std::cin >> std::ws, input);
+    if (!input.empty()) u->fullName = input;
+    std::cout << "Ngay sinh moi: "; std::getline(std::cin, input); if (!input.empty()) u->dateOfBirth = input;
+    std::cout << "Gioi tinh moi: "; std::getline(std::cin, input); if (!input.empty()) u->gender = input;
+    std::cout << "Dia chi moi: "; std::getline(std::cin, input); if (!input.empty()) u->address = input;
+    std::cout << "SDT moi: "; std::getline(std::cin, input); if (!input.empty()) u->phoneNumber = input;
+    std::cout << "GPLX/CCCD moi: "; std::getline(std::cin, input); if (!input.empty()) u->licenseNumber = input;
+    saveUsersToFile();
+    std::cout << "Da cap nhat ho so.\n";
+}
+
+void resetPassword() {
+    std::string email;
+    std::cout << "Email tai khoan: "; std::getline(std::cin >> std::ws, email);
     for (auto& u : userList) {
         if (u.email == email) {
-            string tempPass = generateRandomPassword(8);
-            u.password = hashPassword(tempPass);
+            const std::string temp = generateRandomPassword();
+            u.password = hashPassword(temp);
             saveUsersToFile();
-            cout << ">> Da khoi phuc mat khau va gui toi email " << email << ".\n";
-            cout << ">> [He thong gui mail] Mat khau moi cua ban la: " << tempPass << "\n";
+            std::cout << "Mat khau tam (mo phong gui email): " << temp << '\n';
             return;
         }
     }
-    cout << "[Loi] Email khong ton tai trong he thong!\n";
+    std::cout << "Email khong ton tai.\n";
 }
 
-// 5. Quan ly nguoi dung danh cho Admin (Use-case Manage user)
 void manageUsersAdmin() {
-    if (currentUser == nullptr || currentUser->role != "Admin") {
-        cout << "[Loi] Chuc nang nay chi danh cho Admin!\n";
-        return;
-    }
-
+    if (!isAdmin()) { std::cout << "Chi Admin duoc dung chuc nang nay.\n"; return; }
     int choice;
     do {
-        cout << "\n=== QUAN LY NGUOI DUNG (ADMIN) ===\n";
-        cout << "1. Xem danh sach tat ca tai khoan\n";
-        cout << "2. Them tai khoan moi\n";
-        cout << "3. Xoa tai khoan theo ID\n";
-        cout << "0. Quay lai\n";
-        cout << "Chon: ";
-        cin >> choice;
-
+        std::cout << "\n=== QUAN LY NGUOI DUNG ===\n1. Xem danh sach\n2. Xoa tai khoan\n0. Quay lai\n";
+        std::cout << "Chon: ";
+        if (!(std::cin >> choice)) { std::cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); choice = -1; }
+        else std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         if (choice == 1) {
-            cout << "\n--- DANH SACH TAI KHOAN ---\n";
-            for (const auto& u : userList) {
-                cout << "ID: " << u.userID << " | Email: " << u.email 
-                     << " | Ten: " << u.fullName << " | SDT: " << u.phoneNumber 
-                     << " | Vai tro: " << u.role << "\n";
-            }
+            for (const auto& u : userList)
+                std::cout << u.userID << " | " << u.email << " | " << u.fullName << " | " << u.role << '\n';
         } else if (choice == 2) {
-            registerAccount();
-        } else if (choice == 3) {
-            int delID;
-            cout << "Nhap ID tai khoan can xoa: ";
-            cin >> delID;
-            if (delID == currentUser->userID) {
-                cout << "[Loi] Khong the tu xoa tai khoan Admin dang dang nhap!\n";
-                continue;
-            }
+            int id; std::cout << "ID can xoa: ";
+            if (!(std::cin >> id)) { std::cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); continue; }
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            if (id == currentUserId) { std::cout << "Khong the tu xoa tai khoan dang dang nhap.\n"; continue; }
             bool found = false;
             for (auto it = userList.begin(); it != userList.end(); ++it) {
-                if (it->userID == delID) {
-                    userList.erase(it);
-                    saveUsersToFile();
-                    cout << ">> Da xoa tai khoan thanh cong!\n";
-                    found = true;
-                    break;
-                }
+                if (it->userID == id && it->role != "Admin") { userList.erase(it); found = true; break; }
             }
-            if (!found) cout << "[Loi] Khong tim thay ID!\n";
+            if (found) { saveUsersToFile(); std::cout << "Da xoa tai khoan.\n"; }
+            else std::cout << "Khong tim thay tai khoan hoac khong the xoa Admin.\n";
         }
     } while (choice != 0);
 }
 
-// Menu chay thu nghiem module User
-int main() {
-    srand(time(0));
-    loadUsersFromFile();
-
+void accountMenu() {
     int choice;
     do {
-        cout << "\n==============================\n";
-        cout << "   HE THONG QUAN LY TAI KHOAN \n";
-        if (currentUser != nullptr) {
-            cout << "   [Dang nhap: " << currentUser->fullName << " - " << currentUser->role << "]\n";
-        }
-        cout << "==============================\n";
-        cout << "1. Dang ky tai khoan\n";
-        cout << "2. Dang nhap\n";
-        cout << "3. Quen mat khau\n";
-        cout << "4. Xem / Cap nhat ho so ca nhan\n";
-        cout << "5. Quan ly nguoi dung (Admin)\n";
-        cout << "6. Dang xuat\n";
-        cout << "0. Thoat\n";
-        cout << "Nhap lua chon: ";
-        cin >> choice;
-
+        const User* u = currentUser();
+        std::cout << "\n=== TAI KHOAN ===\n";
+        if (u) std::cout << "Dang nhap: " << u->fullName << " (" << u->role << ")\n";
+        else std::cout << "Chua dang nhap\n";
+        std::cout << "1. Dang ky\n2. Dang nhap\n3. Quen mat khau\n4. Cap nhat ho so\n5. Quan ly nguoi dung (Admin)\n6. Dang xuat\n0. Quay lai\nChon: ";
+        if (!(std::cin >> choice)) { std::cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); choice = -1; }
+        else std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         switch (choice) {
             case 1: registerAccount(); break;
             case 2: loginUser(); break;
             case 3: resetPassword(); break;
             case 4: updateProfile(); break;
             case 5: manageUsersAdmin(); break;
-            case 6: 
-                currentUser = nullptr; 
-                cout << ">> Da dang xuat!\n"; 
-                break;
-            case 0: cout << "Ket thuc chuong trinh.\n"; break;
-            default: cout << "Lua chon khong hop le!\n";
+            case 6: logoutUser(); break;
+            case 0: break;
+            default: std::cout << "Lua chon khong hop le.\n";
         }
     } while (choice != 0);
+}
+}
 
-    return 0;
 }
