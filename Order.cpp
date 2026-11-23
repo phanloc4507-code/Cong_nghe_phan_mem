@@ -2,11 +2,14 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <iomanip>
 using namespace std;
 
 vector<Order> orders;   // danh sach don hang
 
 // doc don hang tu file orders.txt
+const vector<Order>& getAllOrders() { return orders; }
+
 void loadOrders() {
     orders.clear();
     ifstream f("orders.txt");
@@ -21,16 +24,17 @@ void loadOrders() {
 // ghi don hang ra file
 void saveOrders() {
     ofstream f("orders.txt");
-    for (int i = 0; i < orders.size(); i++) {
+    for (std::size_t i = 0; i < orders.size(); ++i) {
         f << orders[i].id << " " << orders[i].username << " " << orders[i].carId << " "
-          << orders[i].total << " " << orders[i].payment << " " << orders[i].status << endl;
+          << fixed << setprecision(0) << orders[i].total << " "
+          << orders[i].payment << " " << orders[i].status << endl;
     }
     f.close();
 }
 
 // tim don theo id, khong co tra ve -1
 int findOrder(int id) {
-    for (int i = 0; i < orders.size(); i++) {
+    for (std::size_t i = 0; i < orders.size(); ++i) {
         if (orders[i].id == id) return i;
     }
     return -1;
@@ -38,13 +42,14 @@ int findOrder(int id) {
 
 void showOrder(Order o) {
     cout << o.id << " | " << o.username << " | " << o.carId << " | "
-         << o.total << " | " << o.payment << " | " << o.status << endl;
+         << fixed << setprecision(0) << o.total << " VND | "
+         << o.payment << " | " << o.status << endl;
 }
 
 int addOrder(string username, string carId, double total, string payment) {
     Order o;
     o.id = 1;
-    for (int i = 0; i < orders.size(); i++) {
+    for (std::size_t i = 0; i < orders.size(); ++i) {
         if (orders[i].id >= o.id) o.id = orders[i].id + 1;
     }
     o.username = username;
@@ -64,13 +69,13 @@ void viewOrderList() {
         return;
     }
     cout << "ID | User | Xe | Tong tien | Thanh toan | Trang thai" << endl;
-    for (int i = 0; i < orders.size(); i++) showOrder(orders[i]);
+    for (const auto& order : orders) showOrder(order);
 }
 
 // xem don cua 1 user (Member)
 void viewMyOrders(string username) {
     bool found = false;
-    for (int i = 0; i < orders.size(); i++) {
+    for (std::size_t i = 0; i < orders.size(); ++i) {
         if (orders[i].username == username) {
             showOrder(orders[i]);
             found = true;
@@ -173,7 +178,10 @@ void memberOrderMenu(string username) {
         } else if (choice == 2) {
             cout << "Nhap ID: ";
             cin >> id;
-            viewOrder(id);
+            int pos = findOrder(id);
+            if (pos == -1) cout << "Khong tim thay don!" << endl;
+            else if (orders[pos].username != username) cout << "Day khong phai don cua ban!" << endl;
+            else showOrder(orders[pos]);
         } else if (choice == 3) {
             cout << "Nhap ID don can huy: ";
             cin >> id;
